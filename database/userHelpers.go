@@ -82,13 +82,6 @@ func GetAllUser() ([]models.User, error) {
 	return user, nil
 }
 
-func UserUpdate(userid uint32) (&models.User, error) {
-	user, err := UserById(userid)
-	if err != nil {
-		return models.User{}, err
-	}
-}
-
 func DeleteUser(userid uint32) (int64, error) {
 	db := Connect()
 	defer db.Close()
@@ -98,4 +91,27 @@ func DeleteUser(userid uint32) (int64, error) {
 		return 0, del.Error
 	}
 	return del.RowsAffected, nil
+}
+
+func UserUpdate(userid uint32) (&models.User, error) {
+	db := Connect()
+	defer db.Close()
+	var user models.User
+	db = db.Model(&models.User).Where("ID = ?", userid).Updates(
+		map[string]interface{
+			"name": user.Name,
+			"username": user.Username,
+			"email": user.Email,
+			"password": user.Password,
+			"updated_at": time.Now(),
+		},
+	)
+	if db.Error != nil {
+		return models.User{}, db.Error
+	}
+	user, err := UserById(userid)
+	if err != nil {
+		return models.User{}, err
+	}
+	return user, nil
 }

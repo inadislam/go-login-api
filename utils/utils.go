@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 )
@@ -13,19 +14,25 @@ func CheckErr(err error) {
 }
 
 func ERROR(w http.ResponseWriter, statusCode int, err error) {
-	ToJson(w, statusCode, struct {
-		Error  error `json:"error"`
-		Status int   `json:"status"`
-	}{
-		Error:  err,
-		Status: statusCode,
-	})
+	if err != nil {
+		ToJson(w, statusCode, struct {
+			Error  string `json:"error"`
+			Status int    `json:"status"`
+		}{
+			Error:  err.Error(),
+			Status: statusCode,
+		})
+	}
+	ToJson(w, http.StatusBadRequest, nil)
 }
 
 func ToJson(w http.ResponseWriter, status int, data interface{}) {
 	w.WriteHeader(status)
 	w.Header().Set("Content-type:", "application/json, charset=utf-8")
-	json.NewEncoder(w).Encode(data)
+	err := json.NewEncoder(w).Encode(data)
+	if err != nil {
+		fmt.Fprintf(w, "%s", err.Error())
+	}
 }
 
 func NotImplemented(w http.ResponseWriter, r *http.Request) {
