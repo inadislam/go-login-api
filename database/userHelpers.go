@@ -77,9 +77,9 @@ func GetAllUser() ([]models.User, error) {
 	var users []models.User
 	err := db.Debug().Order("id asc").Select("id, username, email, updated_at, created_at").Find(&users).Error
 	if err != nil {
-		return models.User{}, err
+		return []models.User{}, err
 	}
-	return user, nil
+	return users, nil
 }
 
 func DeleteUser(userid uint32) (int64, error) {
@@ -93,17 +93,17 @@ func DeleteUser(userid uint32) (int64, error) {
 	return del.RowsAffected, nil
 }
 
-func UserUpdate(userid uint32) (&models.User, error) {
+func UserUpdate(userid uint32) (models.User, error) {
 	db := Connect()
 	defer db.Close()
 	var user models.User
-	db = db.Model(&models.User).Where("ID = ?", userid).Updates(
-		map[string]interface{
-			"name": user.Name,
-			"username": user.Username,
-			"email": user.Email,
-			"password": user.Password,
-			"updated_at": time.Now(),
+	db = db.Model(&models.User{}).Where("ID = ?", userid).Updates(
+		models.User{
+			Name:      user.Name,
+			Username:  user.Username,
+			Email:     user.Email,
+			Password:  user.Password,
+			UpdatedAt: user.UpdatedAt,
 		},
 	)
 	if db.Error != nil {

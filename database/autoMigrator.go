@@ -17,10 +17,10 @@ func AutoMigrator() {
 	db := Connect()
 	defer db.Close()
 
-	err := db.Debug().DropTableIfExists(&models.User{}).Error
-	utils.CheckErr(err)
+	// err := db.Debug().DropTableIfExists(&models.User{}).Error
+	// utils.CheckErr(err)
 
-	err = db.Debug().AutoMigrate(&models.User{}).Error
+	err := db.Debug().AutoMigrate(&models.User{}).Error
 	utils.CheckErr(err)
 
 	// err = db.Debug().Create(&users).Error

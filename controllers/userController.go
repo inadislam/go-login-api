@@ -9,6 +9,8 @@ import (
 	"github.com/inadislam/go-login-api/database"
 	"github.com/inadislam/go-login-api/models"
 	"github.com/inadislam/go-login-api/utils"
+
+	"github.com/gorilla/mux"
 )
 
 func Register(w http.ResponseWriter, r *http.Request) {
@@ -74,8 +76,8 @@ func GetUsers(w http.ResponseWriter, r *http.Request) {
 	user, err := database.GetAllUser()
 	utils.CheckErr(err)
 	utils.ToJson(w, http.StatusCreated, struct {
-		User   models.User `json:"users"`
-		Status int         `json:"status"`
+		User   []models.User `json:"users"`
+		Status int           `json:"status"`
 	}{
 		User:   user,
 		Status: http.StatusCreated,
