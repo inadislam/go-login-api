@@ -17,10 +17,10 @@ func ERROR(w http.ResponseWriter, statusCode int, err error) {
 	if err != nil {
 		ToJson(w, statusCode, struct {
 			Error  string `json:"error"`
-			Status int    `json:"status"`
+			Status string `json:"status"`
 		}{
 			Error:  err.Error(),
-			Status: statusCode,
+			Status: http.StatusText(statusCode),
 		})
 	}
 	ToJson(w, http.StatusBadRequest, nil)
@@ -33,14 +33,4 @@ func ToJson(w http.ResponseWriter, status int, data interface{}) {
 	if err != nil {
 		fmt.Fprintf(w, "%s", err.Error())
 	}
-}
-
-func NotImplemented(w http.ResponseWriter, r *http.Request) {
-	ToJson(w, 200, struct {
-		Message string `json:"message"`
-		Status  int    `json:"status"`
-	}{
-		Message: "It is not implemented by DEV!!",
-		Status:  200,
-	})
 }

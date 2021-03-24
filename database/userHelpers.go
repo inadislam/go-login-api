@@ -3,16 +3,15 @@ package database
 import (
 	"errors"
 
-	"github.com/inadislam/go-login-api/middlewares"
+	"github.com/inadislam/go-login-api/auth"
 	"github.com/inadislam/go-login-api/models"
-	"github.com/inadislam/go-login-api/utils"
 )
 
 func SignupHelper(user models.User) (models.User, error) {
 	db := Connect()
 	defer db.Close()
 
-	hashedPassword, err := utils.HashPassword(user.Password)
+	hashedPassword, err := auth.HashPassword(user.Password)
 	if err != nil {
 		return models.User{}, err
 	}
@@ -24,36 +23,38 @@ func SignupHelper(user models.User) (models.User, error) {
 	return user, nil
 }
 
-func LoginHelper(username, password string) (string, error) {
-	user := UserByName(username)
-	if user.ID == 0 {
-		return "", errors.New("User not Found!!")
+func LoginHelper(username, password string) (string, models.User, error) {
+	user, err := UserByName(username)
+	if user.ID == 0 && err != nil {
+		return "", models.User{}, errors.New("user not found")
 	}
-	err := utils.ComparePass(user.Password, password)
+	err = auth.ComparePass(user.Password, password)
 	if err != nil {
-		return "", err
+		return "", models.User{}, err
 	}
-	token, err := middlewares.JwtToken(user)
+	token, err := auth.JwtToken(user)
 	if err != nil {
-		return "", err
+		return "", models.User{}, err
 	}
-	return token, err
+	return token, user, nil
 }
 
-func UserByName(username string) models.User {
+func UserByName(username string) (models.User, error) {
 	db := Connect()
 	defer db.Close()
 	var user models.User
 	err := db.Debug().Model(&models.User{}).Where("username = ?", username).Find(&user).Error
-	utils.CheckErr(err)
-	return user
+	if err != nil {
+		return models.User{}, err
+	}
+	return user, nil
 }
 
 func UserById(userid uint32) (models.User, error) {
 	db := Connect()
 	defer db.Close()
 	var user models.User
-	err := db.Debug().Model(&models.User{}).Where("ID = ?", userid).Select("id, username, email, updated_at, created_at").Find(&user).Error
+	err := db.Debug().Model(&models.User{}).Where("ID = ?", userid).Select("id, name, username, email, updated_at, created_at").Find(&user).Error
 	if err != nil {
 		return models.User{}, err
 	}
@@ -64,7 +65,7 @@ func UserByEmail(useremail string) (models.User, error) {
 	db := Connect()
 	defer db.Close()
 	var user models.User
-	err := db.Debug().Model(&models.User{}).Where("Email = ?", useremail).Select("id, username, email, updated_at, created_at").Find(&user).Error
+	err := db.Debug().Model(&models.User{}).Where("Email = ?", useremail).Select("id, name, username, email, updated_at, created_at").Find(&user).Error
 	if err != nil {
 		return models.User{}, err
 	}
@@ -75,7 +76,7 @@ func GetAllUser() ([]models.User, error) {
 	db := Connect()
 	defer db.Close()
 	var users []models.User
-	err := db.Debug().Order("id asc").Select("id, username, email, updated_at, created_at").Find(&users).Error
+	err := db.Debug().Order("id asc").Select("id, name, username, email, updated_at, created_at").Find(&users).Error
 	if err != nil {
 		return []models.User{}, err
 	}
@@ -93,25 +94,25 @@ func DeleteUser(userid uint32) (int64, error) {
 	return del.RowsAffected, nil
 }
 
-func UserUpdate(userid uint32) (models.User, error) {
+func UserUpdate(user models.User, userid uint32) (models.User, error) {
 	db := Connect()
 	defer db.Close()
-	var user models.User
+	hashedPassword, err := auth.HashPassword(user.Password)
+	if err != nil {
+		return models.User{}, err
+	}
+	user.Password = string(hashedPassword)
 	db = db.Model(&models.User{}).Where("ID = ?", userid).Updates(
-		models.User{
-			Name:      user.Name,
-			Username:  user.Username,
-			Email:     user.Email,
-			Password:  user.Password,
-			UpdatedAt: user.UpdatedAt,
+		map[string]interface{}{
+			"name":       user.Name,
+			"username":   user.Username,
+			"email":      user.Email,
+			"password":   user.Password,
+			"updated_at": user.UpdatedAt,
 		},
 	)
 	if db.Error != nil {
 		return models.User{}, db.Error
-	}
-	user, err := UserById(userid)
-	if err != nil {
-		return models.User{}, err
 	}
 	return user, nil
 }
