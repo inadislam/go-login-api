@@ -21,5 +21,5 @@ func StartServer() {
 	database.AutoMigrator()
 	r := routes.NewRouter()
 	fmt.Println(message)
-	log.Fatal(http.ListenAndServe(":8080", r))
+	log.Fatal(http.ListenAndServe("localhost:8080", r))
 }

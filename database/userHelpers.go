@@ -5,6 +5,7 @@ import (
 
 	"github.com/inadislam/go-login-api/auth"
 	"github.com/inadislam/go-login-api/models"
+	"github.com/jinzhu/gorm"
 )
 
 func SignupHelper(user models.User) (models.User, error) {
@@ -47,6 +48,9 @@ func UserByName(username string) (models.User, error) {
 	if err != nil {
 		return models.User{}, err
 	}
+	if gorm.IsRecordNotFoundError(err) {
+		return models.User{}, errors.New("user not found")
+	}
 	return user, nil
 }
 
@@ -54,9 +58,12 @@ func UserById(userid uint32) (models.User, error) {
 	db := Connect()
 	defer db.Close()
 	var user models.User
-	err := db.Debug().Model(&models.User{}).Where("ID = ?", userid).Select("id, name, username, email, updated_at, created_at").Find(&user).Error
+	err := db.Debug().Model(&models.User{}).Where("ID = ?", userid).Select("id, name, username, email, otp, active, updated_at, created_at").Find(&user).Error
 	if err != nil {
 		return models.User{}, err
+	}
+	if gorm.IsRecordNotFoundError(err) {
+		return models.User{}, errors.New("user not found")
 	}
 	return user, nil
 }
@@ -65,9 +72,12 @@ func UserByEmail(useremail string) (models.User, error) {
 	db := Connect()
 	defer db.Close()
 	var user models.User
-	err := db.Debug().Model(&models.User{}).Where("Email = ?", useremail).Select("id, name, username, email, updated_at, created_at").Find(&user).Error
+	err := db.Debug().Model(&models.User{}).Where("Email = ?", useremail).Select("id, name, username, email, otp, active, updated_at, created_at").Find(&user).Error
 	if err != nil {
 		return models.User{}, err
+	}
+	if gorm.IsRecordNotFoundError(err) {
+		return models.User{}, errors.New("user not found")
 	}
 	return user, nil
 }
@@ -76,11 +86,22 @@ func GetAllUser() ([]models.User, error) {
 	db := Connect()
 	defer db.Close()
 	var users []models.User
-	err := db.Debug().Order("id asc").Select("id, name, username, email, updated_at, created_at").Find(&users).Error
+	err := db.Debug().Order("id asc").Select("id, name, username, email, otp, active, updated_at, created_at").Find(&users).Error
 	if err != nil {
 		return []models.User{}, err
 	}
 	return users, nil
+}
+
+func UserActive(uid uint32) error {
+	db := Connect()
+	defer db.Close()
+
+	err := db.Debug().Model(&models.User{}).Where("ID = ?", uid).Update("active", true).Error
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func DeleteUser(userid uint32) (int64, error) {
@@ -115,4 +136,34 @@ func UserUpdate(user models.User, userid uint32) (models.User, error) {
 		return models.User{}, db.Error
 	}
 	return user, nil
+}
+
+func GetOTp(uid uint32) int64 {
+	db := Connect()
+	defer db.Close()
+	otp, err := auth.GenerateOTP()
+	if err != nil {
+		return 0
+	}
+	err = db.Debug().Model(&models.User{}).Where("ID = ?", uid).Update("otp", otp).Error
+	if err != nil {
+		return 0
+	}
+
+	return otp
+}
+
+func ChangePassword(uid uint32, password string) error {
+	db := Connect()
+	defer db.Close()
+	hashedPassword, err := auth.HashPassword(password)
+	if err != nil {
+		return err
+	}
+	password = string(hashedPassword)
+	err = db.Debug().Model(&models.User{}).Where("ID = ?", uid).Update("password", password).Error
+	if err != nil {
+		return err
+	}
+	return nil
 }
